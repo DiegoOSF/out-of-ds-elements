@@ -1,7 +1,8 @@
 import fs from 'fs/promises'
 import * as fsync from 'fs'
 
-import { ignoreFolders, repositoriesPath, matchers } from './constants'
+import { ignoreFolders, matchers, repositories } from './constants'
+import { FileType } from './interface'
 
 const writeFile = (filename: string, content: string) =>
 	fs.writeFile(filename, content)
@@ -24,12 +25,6 @@ const createFile = (directory: string, filename: string, content: string) => {
 	writeFile(path, content)
 }
 
-interface FileType {
-	filename: string
-	directory: string
-	path: string
-}
-
 const getAllFiles = async (
 	directory: string,
 	ignoreFolder: string[],
@@ -49,7 +44,12 @@ const getAllFiles = async (
 			const fileList = await getAllFiles(newPath, ignoreFolder)
 			files.push(...fileList)
 		} else {
-			const file = { directory, filename: subPaths, path: newPath }
+			const file: FileType = {
+				directory,
+				filename: subPaths,
+				path: newPath,
+				content: '',
+			}
 			files.push(file)
 		}
 	}
@@ -57,25 +57,43 @@ const getAllFiles = async (
 	return files
 }
 
-const filterEachFile = async (files: FileType[]) => {
-	const hardcodedColor = matchers['REGEX_HEXADECIMAL']
-
-	for (const { filename, directory, path } of files) {
-		const outDirectory = `out-of-ds/${directory.replace('./', '')}`
-
-		const file = await readFile(path)
-
-		if (file.match(hardcodedColor)) createFile(outDirectory, filename, file)
-	}
-}
+const filterContent = (content: string, patterns: any[]) =>
+	!!patterns.filter(pattern => content.match(pattern)).length
 
 const main = async () => {
-	const repositories = await getDirectories(repositoriesPath)
+	const result: any = {}
 
-	const repo = `${repositoriesPath}/${repositories[0]}/src`
-	const files = await getAllFiles(repo, ignoreFolders)
+	for (const repository of repositories) {
+		const { path, projectName } = repository
+		const files = await getAllFiles(path, ignoreFolders)
 
-	filterEachFile(files)
+		result[projectName] = {}
+
+		for (const file of files) {
+			file.content = await readFile(file.path)
+
+			const { filename, directory } = file
+
+			const _file = { filename, directory }
+
+			if (filterContent(file.content, [matchers.colorHexadecimal])) {
+				const colors = result[projectName].colors || []
+				result[projectName].colors = [...colors, _file]
+			}
+
+			if (filterContent(file.content, [matchers.buttonsReactNative])) {
+				const buttons = result[projectName].buttons || []
+				result[projectName].buttons = [...buttons, _file]
+			}
+
+			if (filterContent(file.content, [matchers.typography])) {
+				const typography = result[projectName].typography || []
+				result[projectName].typography = [...typography, _file]
+			}
+		}
+	}
+
+	createFile('results', 'data.json', JSON.stringify(result))
 }
 
 main()
