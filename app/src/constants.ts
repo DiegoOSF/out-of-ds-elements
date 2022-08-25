@@ -18,9 +18,8 @@ export const matchers = {
 	buttonsReactNative: RegExp(
 		/(TouchableOpacity)|(TouchableWithoutFeedback)|(<button>)|(styled.button)|(<button)/gm,
 	),
-	typography: RegExp(
-		/(font-family)|(typography)|(styled.h)||(<h)|(styled.p)|(<p)/gm,
-	),
+	typography: RegExp(/(font-family)|(typography)|(styled.h)|(styled.p)/gm),
+	'creditas-lab': RegExp(/(creditas-lab)/gm),
 }
 
 export const repositories = [

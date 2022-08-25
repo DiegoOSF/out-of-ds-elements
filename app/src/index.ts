@@ -60,7 +60,12 @@ const getAllFiles = async (
 const filterContent = (content: string, patterns: any[]) =>
 	!!patterns.filter(pattern => content.match(pattern)).length
 
-const main = async () => {
+type FieldType = {
+	field: string
+	matcher: typeof RegExp
+}
+
+async function main(fields: FieldType[]) {
 	const result: any = {}
 
 	for (const repository of repositories) {
@@ -74,26 +79,28 @@ const main = async () => {
 
 			const { filename, directory } = file
 
-			const _file = { filename, directory }
-
-			if (filterContent(file.content, [matchers.colorHexadecimal])) {
-				const colors = result[projectName].colors || []
-				result[projectName].colors = [...colors, _file]
-			}
-
-			if (filterContent(file.content, [matchers.buttonsReactNative])) {
-				const buttons = result[projectName].buttons || []
-				result[projectName].buttons = [...buttons, _file]
-			}
-
-			if (filterContent(file.content, [matchers.typography])) {
-				const typography = result[projectName].typography || []
-				result[projectName].typography = [...typography, _file]
-			}
+			fields.forEach(({ field, matcher }) => {
+				if (filterContent(file.content, [matcher])) {
+					const list = result[projectName][field] || []
+					result[projectName][field] = [...list, { filename, directory }]
+				}
+			})
 		}
 	}
+
+	return result
+}
+
+const facade = async () => {
+	const fields = [
+		{ field: 'colors', matcher: matchers.colorHexadecimal },
+		{ field: 'buttons', matcher: matchers.buttonsReactNative },
+		{ field: 'typography', matcher: matchers.typography },
+	] as unknown
+
+	const result = await main(fields as FieldType[])
 
 	createFile('results', 'data.json', JSON.stringify(result))
 }
 
-main()
+facade()
